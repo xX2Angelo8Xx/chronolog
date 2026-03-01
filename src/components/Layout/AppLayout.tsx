@@ -16,9 +16,11 @@ import {
   SettingsRegular,
   SettingsFilled,
   NavigationRegular,
+  SignOutRegular,
 } from '@fluentui/react-icons';
 import { useAppStore } from '@/stores/appStore';
 import { useTimerStore } from '@/stores/timerStore';
+import { useUserStore } from '@/stores/userStore';
 import type { NavPage } from '@/types';
 import { DashboardPage } from '@/components/Dashboard/DashboardPage';
 import { TimerPage } from '@/components/Timer/TimerPage';
@@ -53,6 +55,7 @@ export function AppLayout() {
   const { t } = useTranslation();
   const { currentPage, setPage, isSidebarCollapsed, toggleSidebar } = useAppStore();
   const { status, elapsedSeconds } = useTimerStore();
+  const { currentUser, logout } = useUserStore();
 
   const PageComponent = pageComponents[currentPage];
 
@@ -131,6 +134,62 @@ export function AppLayout() {
             </span>
           </div>
         )}
+
+        {/* User Profile */}
+        <div
+          style={{
+            padding: isSidebarCollapsed ? '12px 0' : '12px 16px',
+            borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+            gap: 8,
+            marginTop: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                backgroundColor: currentUser?.avatar_color || '#0078d4',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#fff',
+                flexShrink: 0,
+              }}
+            >
+              {(currentUser?.display_name || currentUser?.name || '?')[0].toUpperCase()}
+            </div>
+            {!isSidebarCollapsed && (
+              <span
+                style={{
+                  fontSize: 13,
+                  color: tokens.colorNeutralForeground2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {currentUser?.display_name || currentUser?.name}
+              </span>
+            )}
+          </div>
+          {!isSidebarCollapsed && (
+            <div
+              className="titlebar-no-drag"
+              style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, flexShrink: 0 }}
+              onClick={logout}
+              title={t('auth.logout')}
+            >
+              <SignOutRegular style={{ fontSize: 18 }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Content */}

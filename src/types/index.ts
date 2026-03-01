@@ -1,5 +1,24 @@
 // ==================== Core Types ====================
 
+export interface User {
+  id: string;
+  name: string;
+  display_name: string | null;
+  password_hash: string;
+  avatar_color: string;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  display_name?: string;
+  password: string;
+  avatar_color?: string;
+}
+
 export interface Job {
   id: string;
   name: string;
@@ -58,6 +77,7 @@ export interface TimeEntry {
   note: string | null;
   is_manual: boolean;
   is_running: boolean;
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -153,6 +173,7 @@ export interface CreateTimeEntryInput {
   note?: string;
   is_manual?: boolean;
   tag_ids?: string[];
+  user_id?: string | null;
 }
 
 export interface UpdateTimeEntryInput {

@@ -8,6 +8,13 @@ import {
   Option,
   tokens,
   Button,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogTrigger,
 } from '@fluentui/react-components';
 import {
   WeatherMoonRegular,
@@ -19,13 +26,17 @@ import {
   ArrowUploadRegular,
   ArrowSyncRegular,
   DeleteRegular,
+  PersonRegular,
+  SignOutRegular,
 } from '@fluentui/react-icons';
 import { useAppStore } from '@/stores/appStore';
+import { useUserStore } from '@/stores/userStore';
 import type { ThemeMode } from '@/types';
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const { theme, language, settings, setTheme, setLanguage, updateSetting, toggleCommandPalette } = useAppStore();
+  const { currentUser, logout, changePassword } = useUserStore();
 
   const gamificationEnabled = settings.gamification_enabled !== 'false';
   const notificationsEnabled = settings.notifications_enabled !== 'false';
@@ -39,6 +50,35 @@ export function SettingsPage() {
 
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [currentPwd, setCurrentPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdSuccess, setPwdSuccess] = useState(false);
+
+  const handleChangePassword = async () => {
+    setPwdError(null);
+    setPwdSuccess(false);
+    if (!newPwd) {
+      setPwdError(t('auth.passwordRequired'));
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdError(t('auth.passwordMismatch'));
+      return;
+    }
+    if (!currentUser) return;
+    const ok = await changePassword(currentUser.id, currentPwd, newPwd);
+    if (ok) {
+      setPwdSuccess(true);
+      setCurrentPwd('');
+      setNewPwd('');
+      setConfirmPwd('');
+    } else {
+      setPwdError(t('auth.wrongPassword'));
+    }
+  };
 
   const handleExportData = async () => {
     setExportStatus(null);
@@ -66,10 +106,22 @@ export function SettingsPage() {
     setImportStatus(null);
     const result = await window.electronAPI.data.import(mode);
     if (result.cancelled) return;
+
+    const total = result.imported
+      ? Object.values(result.imported).reduce((a: number, b: number) => a + b, 0)
+      : 0;
+
     if (result.success) {
-      const total = result.imported ? Object.values(result.imported).reduce((a: number, b: number) => a + b, 0) : 0;
       setImportStatus(t('settings.importSuccess', { count: total }));
-      // Reload all data
+      window.location.reload();
+    } else if (total > 0) {
+      // Partial success — some rows imported but there were row-level errors
+      setImportStatus(
+        t('settings.importSuccess', { count: total }) +
+          ' (' + (result.errors?.length ?? 0) + ' warnings: ' +
+          (result.errors?.slice(0, 3).join('; ') ?? '') +
+          (result.errors && result.errors.length > 3 ? '…' : '') + ')'
+      );
       window.location.reload();
     } else {
       setImportStatus(t('common.error') + ': ' + (result.error || result.errors?.join(', ')));
@@ -77,10 +129,98 @@ export function SettingsPage() {
   };
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+    <div style={{ maxWidth: 700, width: '100%', margin: '0 auto' }}>
       <div className="page-header">
         <h1 className="page-title">{t('settings.title')}</h1>
       </div>
+
+      {/* Profile */}
+      <Card style={{ padding: 24, marginBottom: 16, background: tokens.colorNeutralBackground1 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+          <PersonRegular style={{ marginRight: 8 }} />
+          {t('auth.selectProfile')}
+        </h3>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            backgroundColor: currentUser?.avatar_color || '#0078d4',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, fontWeight: 600, color: '#fff',
+          }}>
+            {(currentUser?.display_name || currentUser?.name || '?')[0].toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 16 }}>
+              {currentUser?.display_name || currentUser?.name}
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.6 }}>
+              @{currentUser?.name}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button appearance="outline" onClick={() => setShowPasswordDialog(true)}>
+            {t('auth.changePassword')}
+          </Button>
+          <Button appearance="subtle" icon={<SignOutRegular />} onClick={logout}>
+            {t('auth.logout')}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Password Change Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={(_, data) => {
+        setShowPasswordDialog(data.open);
+        if (!data.open) {
+          setCurrentPwd('');
+          setNewPwd('');
+          setConfirmPwd('');
+          setPwdError(null);
+          setPwdSuccess(false);
+        }
+      }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{t('auth.changePassword')}</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                <Input
+                  type="password"
+                  placeholder={t('auth.currentPassword')}
+                  value={currentPwd}
+                  onChange={(_, data) => setCurrentPwd(data.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder={t('auth.newPassword')}
+                  value={newPwd}
+                  onChange={(_, data) => setNewPwd(data.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder={t('auth.confirmPassword')}
+                  value={confirmPwd}
+                  onChange={(_, data) => setConfirmPwd(data.value)}
+                />
+                {pwdError && (
+                  <span style={{ color: tokens.colorPaletteRedForeground1, fontSize: 13 }}>{pwdError}</span>
+                )}
+                {pwdSuccess && (
+                  <span style={{ color: tokens.colorPaletteGreenForeground1, fontSize: 13 }}>{t('auth.passwordChanged')}</span>
+                )}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <DialogTrigger disableButtonEnhancement>
+                <Button appearance="secondary">{t('common.cancel')}</Button>
+              </DialogTrigger>
+              <Button appearance="primary" onClick={handleChangePassword}>{t('common.save')}</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {/* General */}
       <Card style={{ padding: 24, marginBottom: 16, background: tokens.colorNeutralBackground1 }}>
@@ -313,7 +453,7 @@ export function SettingsPage() {
             </code>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Command Palette</span>
+            <span>{t('settings.shortcutCommandPalette')}</span>
             <code style={{ padding: '4px 8px', borderRadius: 4, background: tokens.colorNeutralBackground3, fontSize: 13 }}>
               Ctrl + K
             </code>

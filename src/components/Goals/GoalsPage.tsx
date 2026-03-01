@@ -127,7 +127,10 @@ export function GoalsPage() {
   const loadWeeklyScore = useCallback(async () => {
     const now = new Date();
     const weekStart = getStartOfWeek(now);
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayLabels = [
+      t('common.weekdayMon'), t('common.weekdayTue'), t('common.weekdayWed'),
+      t('common.weekdayThu'), t('common.weekdayFri'), t('common.weekdaySat'), t('common.weekdaySun'),
+    ];
     const days: DayScore[] = [];
     let total = 0;
 
@@ -150,7 +153,7 @@ export function GoalsPage() {
       .filter((g: Goal) => g.goal_type === 'weekly')
       .reduce((acc: number, g: Goal) => acc + g.target_hours * 60, 0);
     setWeekTargetMinutes(weeklyTarget || 40 * 60); // fallback 40h
-  }, []);
+  }, [t]);
 
   // ---------- data loading ----------
 
@@ -316,9 +319,14 @@ export function GoalsPage() {
         ) : (
           goals.map((goal) => {
             const isComplete = goal.progress_percent >= 100;
+            const goalTooltipKey = goal.goal_type === 'daily'
+              ? 'tooltip.goalDaily'
+              : goal.goal_type === 'weekly'
+                ? 'tooltip.goalWeekly'
+                : 'tooltip.goalMonthly';
             return (
+              <Tooltip content={t(goalTooltipKey)} relationship="description" key={goal.id}>
               <Card
-                key={goal.id}
                 style={{
                   padding: 16,
                   background: tokens.colorNeutralBackground1,
@@ -384,15 +392,18 @@ export function GoalsPage() {
                   </Tooltip>
                 </div>
               </Card>
+              </Tooltip>
             );
           })
         )}
       </div>
 
       {/* ===== 3. Weekly Score Summary ===== */}
+      <Tooltip content={t('tooltip.weekScore')} relationship="description">
       <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
         {t('gamification.weeklyScore')}
       </h2>
+      </Tooltip>
       <Card
         style={{
           padding: 20,

@@ -1,17 +1,21 @@
 appId: com.chronolog.app
 productName: ChronoLog
 copyright: Copyright © 2026
+
 directories:
   output: release
   buildResources: assets
+
 files:
   - dist/**/*
   - dist-electron/**/*
   - assets/**/*
   - "!**/*.map"
+
 extraFiles:
   - from: electron/splash.html
     to: dist-electron/splash.html
+
 asar: true
 asarUnpack:
   - "**/*.node"
@@ -19,6 +23,9 @@ asarUnpack:
 
 win:
   target:
+    - target: nsis
+      arch:
+        - x64
     - target: portable
       arch:
         - x64
@@ -30,5 +37,24 @@ win:
       description: ChronoLog Export File
       role: Editor
 
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ChronoLog
+  artifactName: "ChronoLog-Setup-${version}.${ext}"
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerHeaderIcon: assets/icon.ico
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  license: LICENSE
+
 portable:
   artifactName: "ChronoLog-Portable-${version}.${ext}"
+
+publish:
+  provider: github
+  releaseType: release

@@ -140,6 +140,7 @@ export async function getTimeEntries(options: {
   jobId?: string;
   projectId?: string;
   categoryId?: string;
+  userId?: string;
   limit?: number;
 }): Promise<any[]> {
   let sql = `SELECT te.*, 
@@ -173,6 +174,10 @@ export async function getTimeEntries(options: {
   if (options.categoryId) {
     conditions.push('te.category_id = ?');
     params.push(options.categoryId);
+  }
+  if (options.userId) {
+    conditions.push('te.user_id = ?');
+    params.push(options.userId);
   }
 
   if (conditions.length > 0) {
@@ -234,11 +239,12 @@ export async function createTimeEntry(data: {
   is_manual?: boolean;
   is_running?: boolean;
   tag_ids?: string[];
+  user_id?: string | null;
 }): Promise<any> {
   const id = crypto.randomUUID();
   await db.run(
-    `INSERT INTO time_entries (id, job_id, project_id, category_id, start_time, end_time, duration_minutes, note, is_manual, is_running)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO time_entries (id, job_id, project_id, category_id, start_time, end_time, duration_minutes, note, is_manual, is_running, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       data.job_id,
@@ -250,6 +256,7 @@ export async function createTimeEntry(data: {
       data.note ?? null,
       data.is_manual ? 1 : 0,
       data.is_running ? 1 : 0,
+      data.user_id ?? null,
     ]
   );
 
@@ -435,6 +442,11 @@ export async function getSettings(): Promise<Record<string, string>> {
   return settings;
 }
 
+export async function getSetting(key: string): Promise<string | null> {
+  const row = await db.get('SELECT value FROM settings WHERE key = ?', [key]);
+  return row ? (row as any).value : null;
+}
+
 export async function setSetting(key: string, value: string): Promise<void> {
   await db.run(
     'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\')) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = datetime(\'now\')',
@@ -550,6 +562,57 @@ export async function getWeekStats(startDate: string, endDate: string): Promise<
     by_project: Object.values(byProject),
     by_category: Object.values(byCategory),
   };
+}
+
+// ==================== Users ====================
+
+export async function getUsers(): Promise<any[]> {
+  return db.query('SELECT * FROM users WHERE is_active = 1 ORDER BY name');
+}
+
+export async function getAllUsers(): Promise<any[]> {
+  return db.query('SELECT * FROM users ORDER BY name');
+}
+
+export async function getUser(id: string): Promise<any> {
+  return db.get('SELECT * FROM users WHERE id = ?', [id]);
+}
+
+export async function createUser(data: { name: string; display_name?: string; password_hash: string; avatar_color?: string }): Promise<any> {
+  const id = crypto.randomUUID();
+  await db.run(
+    'INSERT INTO users (id, name, display_name, password_hash, avatar_color) VALUES (?, ?, ?, ?, ?)',
+    [id, data.name, data.display_name || null, data.password_hash, data.avatar_color || '#0078d4']
+  );
+  return getUser(id);
+}
+
+export async function updateUser(id: string, data: Partial<{ name: string; display_name: string; password_hash: string; avatar_color: string; is_active: number }>): Promise<any> {
+  const fields = Object.entries(data).map(([key]) => `${key} = ?`).join(', ');
+  const values = Object.values(data);
+  await db.run(`UPDATE users SET ${fields}, updated_at = datetime('now') WHERE id = ?`, [...values, id]);
+  return getUser(id);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await db.run('DELETE FROM users WHERE id = ?', [id]);
+}
+
+export async function loginUser(id: string): Promise<void> {
+  await db.run("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", [id]);
+  await setSetting('active_user_id', id);
+}
+
+export async function getActiveUser(): Promise<any> {
+  const setting = await getSetting('active_user_id');
+  if (!setting) return null;
+  return getUser(setting);
+}
+
+export async function verifyPassword(userId: string, passwordHash: string): Promise<boolean> {
+  const user = await getUser(userId);
+  if (!user) return false;
+  return user.password_hash === passwordHash;
 }
 
 // ==================== Backup ====================

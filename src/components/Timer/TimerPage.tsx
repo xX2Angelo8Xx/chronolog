@@ -41,6 +41,7 @@ import type { DayStats, TimeEntry } from '@/types';
 const useStyles = makeStyles({
   root: {
     maxWidth: '720px',
+    width: '100%',
     marginLeft: 'auto',
     marginRight: 'auto',
     display: 'flex',
@@ -613,7 +614,7 @@ export function TimerPage() {
                 </Tooltip>
               ) : (
                 <div className={styles.breakButtons}>
-                  <Tooltip content={t('timer.coffeeBreak')} relationship="label">
+                  <Tooltip content={t('tooltip.coffeeBreak')} relationship="description">
                     <Button
                       appearance="secondary"
                       size="large"
@@ -624,7 +625,7 @@ export function TimerPage() {
                       ☕
                     </Button>
                   </Tooltip>
-                  <Tooltip content={t('timer.lunchBreak')} relationship="label">
+                  <Tooltip content={t('tooltip.lunchBreak')} relationship="description">
                     <Button
                       appearance="secondary"
                       size="large"
@@ -647,6 +648,7 @@ export function TimerPage() {
         )}
 
         {/* Pomodoro toggle */}
+        <Tooltip content={t('tooltip.pomodoroMode')} relationship="description">
         <div className={styles.pomodoroToggle}>
           <TimerRegular />
           <Text size={200}>{t('pomodoro.title')}</Text>
@@ -660,6 +662,7 @@ export function TimerPage() {
             </Text>
           )}
         </div>
+        </Tooltip>
       </Card>
 
       {/* Selection Fields (only when idle) */}

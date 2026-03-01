@@ -390,7 +390,7 @@ function ProjectsSection() {
                   <Input value={description} onChange={(_, data) => setDescription(data.value)} />
                 </div>
                 <div className="form-field">
-                  <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.hourlyRate')} (Override)</label>
+                  <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.hourlyRateOverride')}</label>
                   <Input
                     type="number"
                     value={hourlyRateOverride}
@@ -512,11 +512,11 @@ function CategoriesSection() {
                   </div>
                 </div>
                 <div className="form-field">
-                  <label style={{ fontWeight: 600, fontSize: 13 }}>Icon (Emoji)</label>
+                  <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.icon')}</label>
                   <Input
                     value={icon}
                     onChange={(_, data) => setIcon(data.value)}
-                    placeholder="e.g. 💻 📊 🎨"
+                    placeholder={t('manage.iconPlaceholder')}
                     style={{ width: 120 }}
                   />
                 </div>
@@ -559,7 +559,7 @@ function TagsSection() {
           <Input
             value={newTagName}
             onChange={(_, data) => setNewTagName(data.value)}
-            placeholder={t('manage.addTag') + ' (e.g. #billable)'}
+            placeholder={t('manage.addTagPlaceholder')}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             style={{ width: '100%' }}
           />

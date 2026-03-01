@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   notify: (title: string, body: string) => ipcRenderer.send('notify', title, body),
   openExternal: (url: string) => ipcRenderer.send('shell:openExternal', url),
 
+  // Auth
+  auth: {
+    hashPassword: (password: string) => ipcRenderer.invoke('auth:hashPassword', password),
+    verifyPassword: (password: string, hash: string) => ipcRenderer.invoke('auth:verifyPassword', password, hash),
+  },
+
   // Data export/import
   data: {
     export: () => ipcRenderer.invoke('data:export'),

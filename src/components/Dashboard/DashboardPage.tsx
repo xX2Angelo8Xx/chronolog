@@ -52,6 +52,7 @@ export function DashboardPage() {
   const [todayStats, setTodayStats] = useState<DayStats | null>(null);
   const [weekStats, setWeekStats] = useState<PeriodStats | null>(null);
   const [dailyStats, setDailyStats] = useState<DayStats[]>([]);
+  const [dailyByJob, setDailyByJob] = useState<Record<string, Record<string, number>>>({});
   const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
   const [gamification, setGamification] = useState<Gamification | null>(null);
   const [goals, setGoals] = useState<any[]>([]);
@@ -89,6 +90,21 @@ export function DashboardPage() {
       }
       const allDayStats = await Promise.all(dayStatsPromises);
       setDailyStats(allDayStats);
+
+      // Compute per-day-per-job breakdown for multi-color chart
+      const weekEntries = await dbService.getTimeEntries({
+        startDate: weekStart + 'T00:00:00',
+        endDate: weekEnd + 'T23:59:59',
+      });
+      const byDayJob: Record<string, Record<string, number>> = {};
+      for (const entry of weekEntries) {
+        if (!entry.start_time || !entry.duration_minutes) continue;
+        const day = entry.start_time.split('T')[0];
+        if (!byDayJob[day]) byDayJob[day] = {};
+        const jobKey = entry.job_name || 'Unknown';
+        byDayJob[day][jobKey] = (byDayJob[day][jobKey] || 0) + (entry.duration_minutes || 0);
+      }
+      setDailyByJob(byDayJob);
     } catch (err) {
       console.error('Dashboard data load error:', err);
     }
@@ -128,17 +144,85 @@ export function DashboardPage() {
     return labels;
   }, []);
 
-  // Weekly bar chart option
-  const weeklyChartOption = useMemo(
-    () => ({
+  // Build multi-color stacked series for the weekly chart
+  const weeklyChartOption = useMemo(() => {
+    const jobNames = new Set<string>();
+    const startDate = new Date(getStartOfWeek());
+    const chartDayDates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      chartDayDates.push(dateStr);
+      Object.keys(dailyByJob[dateStr] || {}).forEach(name => jobNames.add(name));
+    }
+
+    const hasJobData = jobNames.size > 0;
+
+    const series = hasJobData
+      ? Array.from(jobNames).map(jobName => {
+          const job = jobs.find(j => j.name === jobName);
+          return {
+            name: jobName,
+            type: 'bar' as const,
+            stack: 'total',
+            barWidth: '60%',
+            itemStyle: {
+              color: job?.color || '#6b7280',
+              borderRadius: [2, 2, 0, 0],
+            },
+            data: chartDayDates.map(dateStr => {
+              const minutes = dailyByJob[dateStr]?.[jobName] || 0;
+              return +(minutes / 60).toFixed(2);
+            }),
+          };
+        })
+      : [
+          {
+            name: '',
+            type: 'bar' as const,
+            data: dailyStats.map((ds) => ds.work_minutes),
+            itemStyle: {
+              borderRadius: [4, 4, 0, 0],
+              color: tokens.colorBrandBackground,
+            },
+            barMaxWidth: 36,
+            emphasis: {
+              itemStyle: { color: tokens.colorBrandBackgroundPressed },
+            },
+          },
+        ];
+
+    return {
       tooltip: {
         trigger: 'axis' as const,
+        axisPointer: { type: 'shadow' as const },
         formatter: (params: any) => {
-          const p = params[0];
-          return `${p.name}: ${formatMinutes(p.value)}`;
+          const items = Array.isArray(params) ? params : [params];
+          let html = `<b>${items[0]?.name}</b><br/>`;
+          let total = 0;
+          for (const p of items) {
+            if (p.value > 0) {
+              html += `${p.marker} ${p.seriesName}: ${(p.value as number).toFixed(1)}h<br/>`;
+              total += p.value;
+            }
+          }
+          if (hasJobData) {
+            html += `<b>Total: ${total.toFixed(1)}h</b>`;
+          } else {
+            html += formatMinutes(items[0]?.value || 0);
+          }
+          return html;
         },
       },
-      grid: { top: 16, right: 12, bottom: 24, left: 48 },
+      legend: hasJobData
+        ? {
+            data: Array.from(jobNames),
+            bottom: 0,
+            textStyle: { color: tokens.colorNeutralForeground1 },
+          }
+        : undefined,
+      grid: { top: 16, right: 12, bottom: hasJobData ? 40 : 24, left: 48 },
       xAxis: {
         type: 'category' as const,
         data: dayLabels,
@@ -149,27 +233,13 @@ export function DashboardPage() {
         type: 'value' as const,
         axisLabel: {
           color: tokens.colorNeutralForeground3,
-          formatter: (v: number) => formatMinutes(v),
+          formatter: (v: number) => `${v}h`,
         },
         splitLine: { lineStyle: { color: tokens.colorNeutralStroke2, type: 'dashed' as const } },
       },
-      series: [
-        {
-          type: 'bar',
-          data: dailyStats.map((ds) => ds.work_minutes),
-          itemStyle: {
-            borderRadius: [4, 4, 0, 0],
-            color: tokens.colorBrandBackground,
-          },
-          barMaxWidth: 36,
-          emphasis: {
-            itemStyle: { color: tokens.colorBrandBackgroundPressed },
-          },
-        },
-      ],
-    }),
-    [dailyStats, dayLabels]
-  );
+      series,
+    };
+  }, [dailyStats, dailyByJob, dayLabels, jobs]);
 
   // Job distribution pie chart option
   const jobPieOption = useMemo(() => {
@@ -204,7 +274,7 @@ export function DashboardPage() {
   // Styles
   const gridContainerStyle: React.CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: '1fr 320px',
+    gridTemplateColumns: 'minmax(0, 1fr) 320px',
     gap: 24,
   };
 
@@ -244,8 +314,9 @@ export function DashboardPage() {
         {/* ========== LEFT COLUMN ========== */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Top Stats Grid */}
-          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
             {/* Today's Work */}
+            <Tooltip content={t('tooltip.dailyGoal')} relationship="description">
             <Card className="stat-card" style={cardBase}>
               <div className="stat-card-label">{t('dashboard.todayOverview')}</div>
               <div className="stat-card-value" style={{ color: tokens.colorBrandForeground1 }}>
@@ -266,8 +337,10 @@ export function DashboardPage() {
                 {t('dashboard.dailyGoal')}: {formatMinutes(dailyTargetMinutes)}
               </div>
             </Card>
+            </Tooltip>
 
             {/* Weekly Work */}
+            <Tooltip content={t('tooltip.weeklyGoal')} relationship="description">
             <Card className="stat-card" style={cardBase}>
               <div className="stat-card-label">{t('dashboard.weekOverview')}</div>
               <div className="stat-card-value" style={{ color: tokens.colorBrandForeground1 }}>
@@ -288,6 +361,7 @@ export function DashboardPage() {
                 {t('dashboard.weeklyGoal')}: {formatMinutes(weeklyTargetMinutes)}
               </div>
             </Card>
+            </Tooltip>
 
             {/* Breaks Today */}
             <Card className="stat-card" style={cardBase}>
@@ -316,6 +390,7 @@ export function DashboardPage() {
             </Card>
 
             {/* Streak + XP Level */}
+            <Tooltip content={t('tooltip.currentStreak')} relationship="description">
             <Card className="stat-card" style={cardBase}>
               <div className="stat-card-label">
                 {t('dashboard.currentStreak')} &amp; {t('dashboard.level')}
@@ -329,7 +404,7 @@ export function DashboardPage() {
                 </Badge>
               </div>
               <Tooltip
-                content={`${xpInLevel} / ${xpNeeded} ${t('gamification.xp')}`}
+                content={`${xpInLevel} / ${xpNeeded} ${t('gamification.xp')} — ${t('tooltip.xpBar')}`}
                 relationship="label"
               >
                 <div style={progressBarTrack}>
@@ -348,6 +423,7 @@ export function DashboardPage() {
                 {xpInLevel}/{xpNeeded} {t('gamification.xp')} · {t('goals.longestStreak')}: {gamification?.longest_streak || 0}
               </div>
             </Card>
+            </Tooltip>
           </div>
 
           {/* Quick-Start Timer */}
@@ -709,6 +785,7 @@ export function DashboardPage() {
           </Card>
 
           {/* XP Card */}
+          <Tooltip content={t('tooltip.xpBar')} relationship="description">
           <Card style={{ ...cardBase, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <TrophyRegular style={{ fontSize: 20, color: '#f59e0b' }} />
@@ -736,6 +813,7 @@ export function DashboardPage() {
               <span>{t('gamification.nextLevel')}</span>
             </div>
           </Card>
+          </Tooltip>
         </div>
       </div>
     </div>

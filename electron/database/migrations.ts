@@ -5,7 +5,7 @@ const MIGRATIONS: { version: number; description: string; sql: string }[] = [
     version: 1,
     description: 'Initial schema: jobs, projects, categories, time entries, breaks, tags, goals, settings',
     sql: `
-      -- Jobs / Employers
+      -- Jobs / Work
       CREATE TABLE IF NOT EXISTS jobs (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -188,6 +188,39 @@ const MIGRATIONS: { version: number; description: string; sql: string }[] = [
         ('ach-8', 'no_overtime_week', 'Work-Life Balance', 'Eine volle Woche ohne Überstunden', '⚖️'),
         ('ach-9', 'deep_focus', 'Deep Focus', 'Eine ununterbrochene Session von 90+ Minuten', '🧠'),
         ('ach-10', 'early_bird', 'Frühaufsteher', 'Beginne die Arbeit vor 7:00 Uhr', '🌅');
+    `,
+  },
+  {
+    version: 2,
+    description: 'Add user accounts and link time entries to users',
+    sql: `
+      -- Users / Profiles
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        display_name TEXT,
+        password_hash TEXT NOT NULL,
+        avatar_color TEXT NOT NULL DEFAULT '#0078d4',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        last_login_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      -- Link time entries to users
+      ALTER TABLE time_entries ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
+
+      -- Default user
+      INSERT OR IGNORE INTO users (id, name, display_name, password_hash, avatar_color)
+      VALUES ('default-user', 'Standard', 'Standard Benutzer', '', '#0078d4');
+
+      -- Assign existing entries to default user
+      UPDATE time_entries SET user_id = 'default-user' WHERE user_id IS NULL;
+
+      -- Track active user in settings
+      INSERT OR IGNORE INTO settings (key, value) VALUES ('active_user_id', 'default-user');
     `,
   },
 ];

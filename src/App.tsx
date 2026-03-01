@@ -3,18 +3,22 @@ import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-com
 import { useAppStore } from '@/stores/appStore';
 import { useTimerStore } from '@/stores/timerStore';
 import { useDataStore } from '@/stores/dataStore';
+import { useUserStore } from '@/stores/userStore';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { CommandPalette } from '@/components/CommandPalette/CommandPalette';
+import { LoginScreen } from '@/components/Auth/LoginScreen';
 
 function App() {
   const { resolvedTheme, loadSettings, setResolvedTheme } = useAppStore();
   const { loadRunningEntry, tick } = useTimerStore();
   const { loadAll } = useDataStore();
+  const { isAuthenticated } = useUserStore();
 
   useEffect(() => {
     // Initialize app
     const init = async () => {
       await loadSettings();
+      await useUserStore.getState().loadUsers();
       await loadAll();
       await loadRunningEntry();
     };
@@ -54,8 +58,14 @@ function App() {
 
   return (
     <FluentProvider theme={theme} style={{ height: '100%' }}>
-      <AppLayout />
-      <CommandPalette />
+      {isAuthenticated ? (
+        <>
+          <AppLayout />
+          <CommandPalette />
+        </>
+      ) : (
+        <LoginScreen />
+      )}
     </FluentProvider>
   );
 }

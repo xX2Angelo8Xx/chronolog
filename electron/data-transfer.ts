@@ -11,11 +11,13 @@ export interface ChronoLogExport {
   appVersion: string;
   machineName: string;
   data: {
+    users: any[];
     jobs: any[];
     projects: any[];
     categories: any[];
     tags: any[];
     time_entries: any[];
+    time_entry_tags: any[];
     breaks: any[];
     goals: any[];
     achievements: any[];
@@ -40,11 +42,13 @@ export interface ImportResult {
 
 // Tables ordered to respect foreign key constraints (parents before children)
 const TABLE_NAMES = [
+  'users',
   'jobs',
   'projects',
   'categories',
   'tags',
   'time_entries',
+  'time_entry_tags',
   'breaks',
   'goals',
   'achievements',
@@ -52,6 +56,9 @@ const TABLE_NAMES = [
   'settings',
   'audit_log',
 ] as const;
+
+// Tables added after initial export format — old files may lack these
+const OPTIONAL_TABLES: ReadonlySet<string> = new Set(['time_entry_tags', 'users']);
 
 // Reverse order for deletion (children before parents)
 const DELETE_ORDER = [...TABLE_NAMES].reverse();
@@ -196,6 +203,11 @@ export function validateExportFile(data: unknown): data is ChronoLogExport {
 
   const tableData = obj.data as Record<string, unknown>;
   for (const table of TABLE_NAMES) {
+    // Skip optional tables for backward compatibility with older export files
+    if (OPTIONAL_TABLES.has(table)) {
+      if (tableData[table] !== undefined && !Array.isArray(tableData[table])) return false;
+      continue;
+    }
     if (!Array.isArray(tableData[table])) return false;
   }
 

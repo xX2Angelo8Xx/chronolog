@@ -7,6 +7,7 @@ import {
   Option,
   Button,
   Spinner,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   ArrowDownloadRegular,
@@ -683,9 +684,11 @@ export function AnalyticsPage() {
             </Card>
             <Card className="stat-card" style={{ background: tokens.colorNeutralBackground1 }}>
               <div className="stat-card-label">{t('analytics.averageDaily')}</div>
+              <Tooltip content={t('tooltip.avgDaily')} relationship="description">
               <div className="stat-card-value" style={{ color: tokens.colorBrandForeground1 }}>
                 {formatMinutes(avgDaily)}
               </div>
+              </Tooltip>
             </Card>
             <Card className="stat-card" style={{ background: tokens.colorNeutralBackground1 }}>
               <div className="stat-card-label">{t('analytics.mostProductiveDay')}</div>
@@ -701,7 +704,7 @@ export function AnalyticsPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
               gap: 16,
             }}
           >

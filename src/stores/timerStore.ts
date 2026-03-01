@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TimerStatus, BreakType, TimeEntry, Break } from '@/types';
 import * as dbService from '@/services/database';
+import { useUserStore } from '@/stores/userStore';
 
 interface TimerState {
   status: TimerStatus;
@@ -43,6 +44,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     if (!state.selectedJobId) return;
 
     const now = new Date().toISOString();
+    const currentUserId = useUserStore.getState().currentUser?.id ?? null;
     const entry = await dbService.createTimeEntry({
       job_id: state.selectedJobId,
       project_id: state.selectedProjectId,
@@ -51,6 +53,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       note: state.note || undefined,
       is_manual: false,
       is_running: true,
+      user_id: currentUserId,
     });
 
     set({

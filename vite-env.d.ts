@@ -36,6 +36,11 @@ interface Window {
     notify: (title: string, body: string) => void;
     // Shell
     openExternal: (url: string) => void;
+    // Auth
+    auth: {
+      hashPassword: (password: string) => Promise<string>;
+      verifyPassword: (password: string, hash: string) => Promise<boolean>;
+    };
     // Data export/import
     data: {
       export: () => Promise<{ success: boolean; cancelled?: boolean; filePath?: string; stats?: any; error?: string }>;

@@ -31,7 +31,7 @@ function createSplashWindow() {
     skipTaskbar: true,
     alwaysOnTop: true,
     center: true,
-    show: false,
+    show: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -83,6 +83,10 @@ function createWindow() {
         splashWindow = null;
       }
     }, 500); // brief delay for smooth transition
+  });
+
+  mainWindow.on('resize', () => {
+    mainWindow?.webContents.send('window:resized');
   });
 
   mainWindow.on('close', (event) => {
@@ -159,6 +163,18 @@ function setupIPC() {
     }
   });
 
+  // User/Auth IPC
+  ipcMain.handle('auth:hashPassword', (_event, password: string) => {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(password).digest('hex');
+  });
+
+  ipcMain.handle('auth:verifyPassword', (_event, password: string, hash: string) => {
+    const crypto = require('crypto');
+    const inputHash = crypto.createHash('sha256').update(password).digest('hex');
+    return inputHash === hash;
+  });
+
   // Data Export/Import IPC
   ipcMain.handle('data:export', async () => {
     try {
@@ -216,17 +232,27 @@ function setupIPC() {
         ORDER BY te.start_time DESC
       `).all() as any[];
 
-      const headers = ['Date', 'Start', 'End', 'Duration (min)', 'Job', 'Project', 'Category', 'Note', 'Type'];
+      // Properly escape a value for CSV (RFC 4180)
+      const escapeCSV = (value: any): string => {
+        if (value == null) return '';
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const headers = ['Date', 'Start', 'End', 'Duration (min)', 'Job', 'Project', 'Category', 'Note', 'Manual'];
       const rows = entries.map((e: any) => [
-        e.start_time?.slice(0, 10) ?? '',
-        e.start_time?.slice(11, 19) ?? '',
-        e.end_time?.slice(11, 19) ?? '',
-        e.duration_minutes ?? '',
-        e.job_name ?? '',
-        e.project_name ?? '',
-        e.category_name ?? '',
-        `"${(e.note ?? '').replace(/"/g, '""')}"`,
-        e.entry_type ?? '',
+        escapeCSV(e.start_time?.slice(0, 10)),
+        escapeCSV(e.start_time?.slice(11, 19)),
+        escapeCSV(e.end_time?.slice(11, 19)),
+        escapeCSV(e.duration_minutes),
+        escapeCSV(e.job_name),
+        escapeCSV(e.project_name),
+        escapeCSV(e.category_name),
+        escapeCSV(e.note),
+        escapeCSV(e.is_manual ? 'Yes' : 'No'),
       ]);
 
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -263,61 +289,65 @@ function registerGlobalShortcuts() {
   });
 }
 
-app.whenReady().then(async () => {
-  // Show splash screen immediately
-  createSplashWindow();
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 
-  // Initialize database
-  updateSplashStatus('Initializing database...');
-  await new Promise(r => setTimeout(r, 300));
-  initDatabase();
+  app.whenReady().then(async () => {
+    // Show splash screen immediately
+    createSplashWindow();
 
-  // Set up IPC handlers
-  updateSplashStatus('Setting up services...');
-  await new Promise(r => setTimeout(r, 200));
-  setupIPC();
+    // Initialize database
+    updateSplashStatus('Initializing database...');
+    initDatabase();
 
-  // Register shortcuts
-  updateSplashStatus('Registering shortcuts...');
-  await new Promise(r => setTimeout(r, 150));
-  registerGlobalShortcuts();
+    // Set up IPC handlers and register shortcuts in parallel
+    updateSplashStatus('Setting up services...');
+    setupIPC();
+    registerGlobalShortcuts();
 
-  // Create main window (hidden)
-  updateSplashStatus('Loading interface...');
-  await new Promise(r => setTimeout(r, 200));
-  createWindow();
-
-  // Set up system tray
-  updateSplashStatus('Setting up system tray...');
-  await new Promise(r => setTimeout(r, 150));
-  tray = setupTray(mainWindow!);
-
-  // Set up idle detector
-  updateSplashStatus('Starting idle detection...');
-  await new Promise(r => setTimeout(r, 150));
-  setupIdleDetector(mainWindow!);
-
-  updateSplashStatus('Almost ready...');
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+    // Create main window (hidden)
+    updateSplashStatus('Loading interface...');
     createWindow();
-  }
-});
 
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-});
+    // Set up system tray
+    updateSplashStatus('Setting up system tray...');
+    tray = setupTray(mainWindow!);
 
-app.on('before-quit', () => {
-  isQuitting = true;
-  mainWindow?.removeAllListeners('close');
-  mainWindow?.close();
-});
+    // Set up idle detector
+    updateSplashStatus('Starting idle detection...');
+    setupIdleDetector(mainWindow!);
+
+    updateSplashStatus('Almost ready...');
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+  });
+
+  app.on('before-quit', () => {
+    isQuitting = true;
+    mainWindow?.removeAllListeners('close');
+    mainWindow?.close();
+  });
+}
