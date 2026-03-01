@@ -19,14 +19,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: chronolog/package-lock.json
 
       - name: Install dependencies
-        working-directory: chronolog
         run: npm ci
 
       - name: Build & Package
-        working-directory: chronolog
         run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -36,15 +33,15 @@ jobs:
         with:
           name: chronolog-windows
           path: |
-            chronolog/release/*.exe
-            chronolog/release/*.yml
+            release/*.exe
+            release/*.yml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            chronolog/release/ChronoLog-Setup-*.exe
-            chronolog/release/ChronoLog-Portable-*.exe
-          draft: true
+            release/ChronoLog-Setup-*.exe
+            release/ChronoLog-Portable-*.exe
+          draft: false
           generate_release_notes: true
