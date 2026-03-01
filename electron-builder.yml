@@ -1,0 +1,34 @@
+appId: com.chronolog.app
+productName: ChronoLog
+copyright: Copyright © 2026
+directories:
+  output: release
+  buildResources: assets
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - assets/**/*
+  - "!**/*.map"
+extraFiles:
+  - from: electron/splash.html
+    to: dist-electron/splash.html
+asar: true
+asarUnpack:
+  - "**/*.node"
+  - "**/better-sqlite3/**"
+
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  icon: assets/icon.png
+  signAndEditExecutable: false
+  fileAssociations:
+    - ext: chronolog
+      name: ChronoLog Data
+      description: ChronoLog Export File
+      role: Editor
+
+portable:
+  artifactName: "ChronoLog-Portable-${version}.${ext}"

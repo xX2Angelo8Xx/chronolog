@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.node/
+
+# Build output
+dist/
+dist-electron/
+release/
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+
+# Environment
+.env
+
+# Build logs
+build-stdout.log
+build-stderr.log
+build-errors.log
+build-result.txt
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+*.swp
