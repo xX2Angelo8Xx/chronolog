@@ -1,6 +1,6 @@
 {
   "name": "chronolog",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "ChronoLog - Personal Time Management & Tracking Tool",
   "main": "dist-electron/main.js",
   "author": "Angelo",

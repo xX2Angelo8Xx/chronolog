@@ -302,7 +302,7 @@ const useStyles = makeStyles({
   breakHint: {
     marginTop: '12px',
     fontSize: '12px',
-    opacity: 0.6,
+    color: tokens.colorNeutralForeground3,
   },
   sectionTitle: {
     display: 'flex',

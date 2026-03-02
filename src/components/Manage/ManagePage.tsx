@@ -28,6 +28,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDataStore } from '@/stores/dataStore';
 import { COLOR_PALETTE } from '@/utils/helpers';
+import { ColorPicker } from './ColorPicker';
 import type { Job, Project, Category, Tag } from '@/types';
 
 type ManageTab = 'jobs' | 'projects' | 'categories' | 'tags';
@@ -120,7 +121,7 @@ function JobsSection() {
 
       <div className="entries-list">
         {jobs.length === 0 ? (
-          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, opacity: 0.5 }}>
+          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground3 }}>
             {t('manage.noJobs')}
           </Card>
         ) : (
@@ -131,7 +132,7 @@ function JobsSection() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600 }}>{job.name}</div>
                   {job.hourly_rate != null && (
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>
+                    <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
                       {job.hourly_rate} {job.currency}/h
                     </div>
                   )}
@@ -174,23 +175,7 @@ function JobsSection() {
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.color')}</label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {COLOR_PALETTE.map((c) => (
-                      <div
-                        key={c}
-                        onClick={() => setColor(c)}
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 6,
-                          background: c,
-                          cursor: 'pointer',
-                          border: color === c ? '2px solid white' : '2px solid transparent',
-                          boxShadow: color === c ? `0 0 0 2px ${c}` : 'none',
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <ColorPicker value={color} onChange={setColor} />
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.hourlyRate')}</label>
@@ -292,7 +277,7 @@ function ProjectsSection() {
 
       <div className="entries-list">
         {projects.length === 0 ? (
-          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, opacity: 0.5 }}>
+          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground3 }}>
             {t('manage.noProjects')}
           </Card>
         ) : (
@@ -305,7 +290,7 @@ function ProjectsSection() {
                     {project.name}
                     {project.is_favorite && <StarFilled style={{ color: '#f59e0b', marginLeft: 6, fontSize: 14 }} />}
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>
+                  <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
                     {project.job_name}
                     {project.description && ` · ${project.description}`}
                   </div>
@@ -371,19 +356,7 @@ function ProjectsSection() {
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.color')}</label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {COLOR_PALETTE.map((c) => (
-                      <div
-                        key={c}
-                        onClick={() => setColor(c)}
-                        style={{
-                          width: 28, height: 28, borderRadius: 6, background: c, cursor: 'pointer',
-                          border: color === c ? '2px solid white' : '2px solid transparent',
-                          boxShadow: color === c ? `0 0 0 2px ${c}` : 'none',
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <ColorPicker value={color} onChange={setColor} />
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.description')}</label>
@@ -460,7 +433,7 @@ function CategoriesSection() {
 
       <div className="entries-list">
         {categories.length === 0 ? (
-          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, opacity: 0.5 }}>
+          <Card style={{ padding: 48, textAlign: 'center', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground3 }}>
             {t('manage.noCategories')}
           </Card>
         ) : (
@@ -497,19 +470,7 @@ function CategoriesSection() {
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.color')}</label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {COLOR_PALETTE.map((c) => (
-                      <div
-                        key={c}
-                        onClick={() => setColor(c)}
-                        style={{
-                          width: 28, height: 28, borderRadius: 6, background: c, cursor: 'pointer',
-                          border: color === c ? '2px solid white' : '2px solid transparent',
-                          boxShadow: color === c ? `0 0 0 2px ${c}` : 'none',
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <ColorPicker value={color} onChange={setColor} />
                 </div>
                 <div className="form-field">
                   <label style={{ fontWeight: 600, fontSize: 13 }}>{t('manage.icon')}</label>
@@ -571,19 +532,7 @@ function TagsSection() {
 
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontWeight: 600, fontSize: 13, display: 'block', marginBottom: 6 }}>{t('manage.color')}</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {COLOR_PALETTE.map((c) => (
-            <div
-              key={c}
-              onClick={() => setNewTagColor(c)}
-              style={{
-                width: 24, height: 24, borderRadius: 4, background: c, cursor: 'pointer',
-                border: newTagColor === c ? '2px solid white' : '2px solid transparent',
-                boxShadow: newTagColor === c ? `0 0 0 2px ${c}` : 'none',
-              }}
-            />
-          ))}
-        </div>
+        <ColorPicker value={newTagColor} onChange={setNewTagColor} />
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -604,7 +553,7 @@ function TagsSection() {
           </div>
         ))}
         {tags.length === 0 && (
-          <div style={{ opacity: 0.5, padding: 20 }}>{t('common.noData')}</div>
+          <div style={{ color: tokens.colorNeutralForeground3, padding: 20 }}>{t('common.noData')}</div>
         )}
       </div>
     </>

@@ -27,10 +27,12 @@ interface Window {
       set: (theme: 'light' | 'dark' | 'system') => void;
       onChanged: (callback: (theme: 'dark' | 'light') => void) => () => void;
     };
-    // Idle detection
-    idle: {
-      getIdleTime: () => Promise<number>;
-      onIdleStateChanged: (callback: (state: 'active' | 'idle' | 'locked') => void) => () => void;
+    // Auto-updater
+    updater: {
+      check: () => Promise<void>;
+      download: () => Promise<void>;
+      install: () => void;
+      onStatus: (callback: (data: any) => void) => () => void;
     };
     // Notifications
     notify: (title: string, body: string) => void;

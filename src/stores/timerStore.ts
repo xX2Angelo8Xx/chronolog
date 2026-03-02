@@ -153,12 +153,13 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
   tick: () => {
     const state = get();
-    if (state.status === 'running') {
-      const newElapsed = state.elapsedSeconds + 1;
+    if (state.status === 'running' && state.currentEntry) {
+      const start = new Date(state.currentEntry.start_time).getTime();
+      const newElapsed = Math.floor((Date.now() - start) / 1000);
       set({ elapsedSeconds: newElapsed });
 
       // Update tray every 10 seconds
-      if (newElapsed % 10 === 0 && state.currentEntry) {
+      if (newElapsed % 10 === 0) {
         const h = Math.floor(newElapsed / 3600);
         const m = Math.floor((newElapsed % 3600) / 60);
         const s = newElapsed % 60;
@@ -170,8 +171,10 @@ export const useTimerStore = create<TimerState>((set, get) => ({
           isRunning: true,
         });
       }
-    } else if (state.status === 'paused') {
-      set({ breakElapsedSeconds: state.breakElapsedSeconds + 1 });
+    } else if (state.status === 'paused' && state.currentBreak) {
+      const breakStart = new Date(state.currentBreak.start_time).getTime();
+      const newBreakElapsed = Math.floor((Date.now() - breakStart) / 1000);
+      set({ breakElapsedSeconds: newBreakElapsed });
     }
   },
 

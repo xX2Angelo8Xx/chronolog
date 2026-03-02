@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { initDatabase, getDb } from './database/db';
 import { setupTray } from './tray';
-import { setupIdleDetector } from './idle-detector';
 import { exportData, importData, validateExportFile } from './data-transfer';
+import { setupAutoUpdater } from './auto-updater';
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
@@ -322,9 +322,9 @@ if (!gotTheLock) {
     updateSplashStatus('Setting up system tray...');
     tray = setupTray(mainWindow!);
 
-    // Set up idle detector
-    updateSplashStatus('Starting idle detection...');
-    setupIdleDetector(mainWindow!);
+    // Set up auto-updater
+    updateSplashStatus('Checking for updates...');
+    setupAutoUpdater(mainWindow!);
 
     updateSplashStatus('Almost ready...');
   });

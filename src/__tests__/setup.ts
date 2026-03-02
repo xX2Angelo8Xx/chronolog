@@ -27,10 +27,6 @@ const mockElectronAPI = {
     set: vi.fn(),
     onChanged: vi.fn().mockReturnValue(() => {}),
   },
-  idle: {
-    getIdleTime: vi.fn().mockResolvedValue(0),
-    onIdleStateChanged: vi.fn().mockReturnValue(() => {}),
-  },
   notify: vi.fn(),
   openExternal: vi.fn(),
   data: {

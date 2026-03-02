@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -36,7 +36,7 @@ import type { ThemeMode } from '@/types';
 export function SettingsPage() {
   const { t } = useTranslation();
   const { theme, language, settings, setTheme, setLanguage, updateSetting, toggleCommandPalette } = useAppStore();
-  const { currentUser, logout, changePassword } = useUserStore();
+  const { currentUser, logout, changePassword, deleteUser } = useUserStore();
 
   const gamificationEnabled = settings.gamification_enabled !== 'false';
   const notificationsEnabled = settings.notifications_enabled !== 'false';
@@ -56,6 +56,21 @@ export function SettingsPage() {
   const [confirmPwd, setConfirmPwd] = useState('');
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdSuccess, setPwdSuccess] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string>('idle');
+  const [updateVersion, setUpdateVersion] = useState<string>('');
+  const [updatePercent, setUpdatePercent] = useState<number>(0);
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => {
+    window.electronAPI.app.getVersion().then((v: string) => setAppVersion(v));
+    const unsub = window.electronAPI.updater.onStatus((data: any) => {
+      setUpdateStatus(data.status);
+      if (data.version) setUpdateVersion(data.version);
+      if (data.percent !== undefined) setUpdatePercent(data.percent);
+    });
+    return () => unsub();
+  }, []);
 
   const handleChangePassword = async () => {
     setPwdError(null);
@@ -154,7 +169,7 @@ export function SettingsPage() {
             <div style={{ fontWeight: 600, fontSize: 16 }}>
               {currentUser?.display_name || currentUser?.name}
             </div>
-            <div style={{ fontSize: 13, opacity: 0.6 }}>
+            <div style={{ fontSize: 13, color: tokens.colorNeutralForeground3 }}>
               @{currentUser?.name}
             </div>
           </div>
@@ -167,6 +182,28 @@ export function SettingsPage() {
           <Button appearance="subtle" icon={<SignOutRegular />} onClick={logout}>
             {t('auth.logout')}
           </Button>
+        </div>
+
+        {/* Danger Zone - Delete Account */}
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${tokens.colorPaletteRedBorderActive}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: tokens.colorPaletteRedForeground1 }}>
+                {t('settings.deleteAccount', { defaultValue: 'Delete Account' })}
+              </div>
+              <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3, marginTop: 2 }}>
+                {t('settings.deleteAccountDescription', { defaultValue: 'Permanently delete your account and all associated data. This action cannot be undone.' })}
+              </div>
+            </div>
+            <Button
+              appearance="primary"
+              icon={<DeleteRegular />}
+              onClick={() => setShowDeleteDialog(true)}
+              style={{ backgroundColor: tokens.colorPaletteRedBackground3, borderColor: tokens.colorPaletteRedBackground3 }}
+            >
+              {t('settings.deleteAccount', { defaultValue: 'Delete Account' })}
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -217,6 +254,43 @@ export function SettingsPage() {
                 <Button appearance="secondary">{t('common.cancel')}</Button>
               </DialogTrigger>
               <Button appearance="primary" onClick={handleChangePassword}>{t('common.save')}</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(_, data) => setShowDeleteDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>
+              {t('settings.deleteAccount', { defaultValue: 'Delete Account' })}
+            </DialogTitle>
+            <DialogContent>
+              <p style={{ margin: '8px 0', color: tokens.colorNeutralForeground1 }}>
+                {t('settings.deleteAccountConfirm', { defaultValue: 'Are you sure you want to permanently delete your account? All your time entries, settings, and data will be lost forever.' })}
+              </p>
+              <p style={{ margin: '8px 0', fontWeight: 600, color: tokens.colorPaletteRedForeground1 }}>
+                {t('settings.deleteAccountWarning', { defaultValue: 'This action cannot be undone!' })}
+              </p>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowDeleteDialog(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                appearance="primary"
+                icon={<DeleteRegular />}
+                onClick={async () => {
+                  if (currentUser) {
+                    await deleteUser(currentUser.id);
+                    setShowDeleteDialog(false);
+                  }
+                }}
+                style={{ backgroundColor: tokens.colorPaletteRedBackground3, borderColor: tokens.colorPaletteRedBackground3 }}
+              >
+                {t('settings.deleteAccountConfirmButton', { defaultValue: 'Yes, Delete My Account' })}
+              </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
@@ -282,10 +356,10 @@ export function SettingsPage() {
             value={coffeeBreakMax}
             onChange={(_, data) => updateSetting('coffee_break_max_minutes', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>min</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>min</span>}
           />
         </div>
-        <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>
+        <p style={{ fontSize: 12, color: tokens.colorNeutralForeground3, margin: 0 }}>
           {t('timer.breakInfo')}
         </p>
       </Card>
@@ -301,7 +375,7 @@ export function SettingsPage() {
             value={dailyTarget}
             onChange={(_, data) => updateSetting('daily_target_hours', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>h</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>h</span>}
           />
         </div>
 
@@ -312,7 +386,7 @@ export function SettingsPage() {
             value={weeklyTarget}
             onChange={(_, data) => updateSetting('weekly_target_hours', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>h</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>h</span>}
           />
         </div>
       </Card>
@@ -328,7 +402,7 @@ export function SettingsPage() {
             value={pomodoroWork}
             onChange={(_, data) => updateSetting('pomodoro_work_minutes', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>min</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>min</span>}
           />
         </div>
 
@@ -339,7 +413,7 @@ export function SettingsPage() {
             value={pomodoroBreak}
             onChange={(_, data) => updateSetting('pomodoro_break_minutes', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>min</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>min</span>}
           />
         </div>
 
@@ -350,7 +424,7 @@ export function SettingsPage() {
             value={pomodoroLongBreak}
             onChange={(_, data) => updateSetting('pomodoro_long_break_minutes', data.value)}
             style={{ width: 100 }}
-            contentAfter={<span style={{ fontSize: 12, opacity: 0.6 }}>min</span>}
+            contentAfter={<span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>min</span>}
           />
         </div>
 
@@ -381,14 +455,14 @@ export function SettingsPage() {
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>{t('settings.data')}</h3>
 
         {/* Export Section */}
-        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>{t('settings.exportData')}</h4>
+        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: tokens.colorNeutralForeground2 }}>{t('settings.exportData')}</h4>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
           <Card style={{ flex: '1 1 200px', padding: 16, background: tokens.colorNeutralBackground2 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Button appearance="secondary" icon={<ArrowDownloadRegular />} onClick={handleExportData} style={{ width: '100%' }}>
                 {t('settings.exportData')} (.chronolog)
               </Button>
-              <span style={{ fontSize: 12, opacity: 0.6 }}>{t('settings.exportDataDesc')}</span>
+              <span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>{t('settings.exportDataDesc')}</span>
             </div>
           </Card>
           <Card style={{ flex: '1 1 200px', padding: 16, background: tokens.colorNeutralBackground2 }}>
@@ -396,7 +470,7 @@ export function SettingsPage() {
               <Button appearance="secondary" icon={<ArrowDownloadRegular />} onClick={handleExportCSV} style={{ width: '100%' }}>
                 {t('settings.exportCSV')}
               </Button>
-              <span style={{ fontSize: 12, opacity: 0.6 }}>{t('settings.csvExportDesc')}</span>
+              <span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>{t('settings.csvExportDesc')}</span>
             </div>
           </Card>
         </div>
@@ -407,14 +481,14 @@ export function SettingsPage() {
         )}
 
         {/* Import Section */}
-        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>{t('settings.importData')}</h4>
+        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: tokens.colorNeutralForeground2 }}>{t('settings.importData')}</h4>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Card style={{ flex: '1 1 200px', padding: 16, background: tokens.colorNeutralBackground2 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Button appearance="secondary" icon={<DeleteRegular />} onClick={() => handleImportData('replace')} style={{ width: '100%' }}>
                 {t('settings.importReplace')}
               </Button>
-              <span style={{ fontSize: 12, opacity: 0.6, color: tokens.colorPaletteRedForeground1 }}>{t('settings.importReplaceDesc')}</span>
+              <span style={{ fontSize: 12, color: tokens.colorPaletteRedForeground1 }}>{t('settings.importReplaceDesc')}</span>
             </div>
           </Card>
           <Card style={{ flex: '1 1 200px', padding: 16, background: tokens.colorNeutralBackground2 }}>
@@ -422,7 +496,7 @@ export function SettingsPage() {
               <Button appearance="secondary" icon={<ArrowSyncRegular />} onClick={() => handleImportData('merge')} style={{ width: '100%' }}>
                 {t('settings.importMerge')}
               </Button>
-              <span style={{ fontSize: 12, opacity: 0.6 }}>{t('settings.importMergeDesc')}</span>
+              <span style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>{t('settings.importMergeDesc')}</span>
             </div>
           </Card>
         </div>
@@ -461,15 +535,116 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      {/* About */}
+      {/* About & Updates */}
       <Card style={{ padding: 24, background: tokens.colorNeutralBackground1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <InfoRegular style={{ fontSize: 20 }} />
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>{t('settings.about')}</h3>
         </div>
-        <div style={{ marginTop: 12, opacity: 0.6, fontSize: 13 }}>
+        <div style={{ marginTop: 12, color: tokens.colorNeutralForeground3, fontSize: 13 }}>
           <p>{t('app.name')} — {t('app.tagline')}</p>
-          <p style={{ marginTop: 4 }}>{t('settings.version')} 1.0.0</p>
+          <p style={{ marginTop: 4 }}>{t('settings.version')} {appVersion || '...'}</p>
+        </div>
+
+        {/* Update Section */}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${tokens.colorNeutralStroke2}` }}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: tokens.colorNeutralForeground1 }}>
+            {t('settings.updates', { defaultValue: 'Updates' })}
+          </h4>
+
+          {updateStatus === 'idle' && (
+            <Button
+              appearance="secondary"
+              icon={<ArrowSyncRegular />}
+              onClick={() => window.electronAPI.updater.check()}
+            >
+              {t('settings.checkForUpdates', { defaultValue: 'Check for Updates' })}
+            </Button>
+          )}
+
+          {updateStatus === 'checking' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: tokens.colorNeutralForeground2 }}>
+              <ArrowSyncRegular style={{ animation: 'spin 1s linear infinite' }} />
+              <span>{t('settings.checkingUpdates', { defaultValue: 'Checking for updates...' })}</span>
+            </div>
+          )}
+
+          {updateStatus === 'up-to-date' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: tokens.colorPaletteGreenForeground1 }}>
+                ✓ {t('settings.upToDate', { defaultValue: 'You are running the latest version.' })}
+              </span>
+              <Button
+                appearance="subtle"
+                size="small"
+                onClick={() => {
+                  setUpdateStatus('idle');
+                  window.electronAPI.updater.check();
+                }}
+              >
+                {t('settings.recheckUpdates', { defaultValue: 'Check again' })}
+              </Button>
+            </div>
+          )}
+
+          {updateStatus === 'available' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ color: tokens.colorBrandForeground1, fontWeight: 600 }}>
+                {t('settings.updateAvailable', { defaultValue: 'Update available' })}: v{updateVersion}
+              </span>
+              <Button
+                appearance="primary"
+                icon={<ArrowDownloadRegular />}
+                onClick={() => window.electronAPI.updater.download()}
+              >
+                {t('settings.downloadUpdate', { defaultValue: 'Download Update' })}
+              </Button>
+            </div>
+          )}
+
+          {updateStatus === 'downloading' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span>{t('settings.downloading', { defaultValue: 'Downloading update...' })} {updatePercent}%</span>
+              <div style={{ height: 6, borderRadius: 3, background: tokens.colorNeutralStroke2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${updatePercent}%`, background: tokens.colorBrandBackground, borderRadius: 3, transition: 'width 0.3s' }} />
+              </div>
+            </div>
+          )}
+
+          {updateStatus === 'downloaded' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ color: tokens.colorPaletteGreenForeground1, fontWeight: 600 }}>
+                ✓ {t('settings.updateReady', { defaultValue: 'Update downloaded and ready to install.' })}
+              </span>
+              <p style={{ fontSize: 12, color: tokens.colorNeutralForeground3, margin: 0 }}>
+                {t('settings.updateRestartInfo', { defaultValue: 'The app will restart to apply the update. Your data will be preserved.' })}
+              </p>
+              <Button
+                appearance="primary"
+                onClick={() => window.electronAPI.updater.install()}
+              >
+                {t('settings.installAndRestart', { defaultValue: 'Install & Restart' })}
+              </Button>
+            </div>
+          )}
+
+          {updateStatus === 'error' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ color: tokens.colorPaletteRedForeground1 }}>
+                {t('settings.updateError', { defaultValue: 'Could not check for updates. Please try again later.' })}
+              </span>
+              <Button
+                appearance="secondary"
+                size="small"
+                onClick={() => {
+                  setUpdateStatus('idle');
+                  window.electronAPI.updater.check();
+                }}
+              >
+                {t('settings.recheckUpdates', { defaultValue: 'Try again' })}
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
     </div>

@@ -285,16 +285,20 @@ describe('timerStore', () => {
   // ==================== tick ====================
 
   describe('tick', () => {
-    it('increments elapsedSeconds when running', () => {
+    it('computes elapsedSeconds from wall-clock time when running', () => {
+      const startMs = new Date('2025-06-15T10:00:00.000Z').getTime();
+      vi.spyOn(Date, 'now').mockReturnValue(startMs + 11_000);
+
       useTimerStore.setState({
         status: 'running',
-        elapsedSeconds: 10,
-        currentEntry: mockTimeEntry(),
+        elapsedSeconds: 0,
+        currentEntry: mockTimeEntry({ start_time: '2025-06-15T10:00:00.000Z' }),
       });
 
       useTimerStore.getState().tick();
 
       expect(useTimerStore.getState().elapsedSeconds).toBe(11);
+      vi.restoreAllMocks();
     });
 
     it('does not increment elapsedSeconds when idle', () => {
@@ -305,22 +309,30 @@ describe('timerStore', () => {
       expect(useTimerStore.getState().elapsedSeconds).toBe(0);
     });
 
-    it('increments breakElapsedSeconds when paused', () => {
+    it('computes breakElapsedSeconds from wall-clock time when paused', () => {
+      const breakStartMs = new Date('2025-06-15T11:00:00.000Z').getTime();
+      vi.spyOn(Date, 'now').mockReturnValue(breakStartMs + 6_000);
+
       useTimerStore.setState({
         status: 'paused',
-        breakElapsedSeconds: 5,
+        breakElapsedSeconds: 0,
+        currentBreak: mockBreak({ start_time: '2025-06-15T11:00:00.000Z' }),
       });
 
       useTimerStore.getState().tick();
 
       expect(useTimerStore.getState().breakElapsedSeconds).toBe(6);
+      vi.restoreAllMocks();
     });
 
     it('updates tray every 10 seconds when running', () => {
+      const startMs = new Date('2025-06-15T10:00:00.000Z').getTime();
+      vi.spyOn(Date, 'now').mockReturnValue(startMs + 10_000);
+
       useTimerStore.setState({
         status: 'running',
-        elapsedSeconds: 9, // next tick = 10
-        currentEntry: mockTimeEntry(),
+        elapsedSeconds: 0,
+        currentEntry: mockTimeEntry({ start_time: '2025-06-15T10:00:00.000Z' }),
       });
 
       useTimerStore.getState().tick();
@@ -331,18 +343,23 @@ describe('timerStore', () => {
           elapsed: '00:00:10',
         }),
       );
+      vi.restoreAllMocks();
     });
 
     it('does not update tray on non-10-second intervals', () => {
+      const startMs = new Date('2025-06-15T10:00:00.000Z').getTime();
+      vi.spyOn(Date, 'now').mockReturnValue(startMs + 8_000);
+
       useTimerStore.setState({
         status: 'running',
-        elapsedSeconds: 7, // next tick = 8
-        currentEntry: mockTimeEntry(),
+        elapsedSeconds: 0,
+        currentEntry: mockTimeEntry({ start_time: '2025-06-15T10:00:00.000Z' }),
       });
 
       useTimerStore.getState().tick();
 
       expect((window as any).electronAPI.tray.updateTimer).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
     });
   });
 

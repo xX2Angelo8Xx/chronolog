@@ -44,7 +44,7 @@ function getGreetingKey(): string {
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { status, elapsedSeconds, currentEntry } = useTimerStore();
+  const { status, elapsedSeconds, currentEntry, selectedJobId } = useTimerStore();
   const startTimer = useTimerStore((s) => s.startTimer);
   const { setPage, settings } = useAppStore();
   const { jobs } = useDataStore();
@@ -443,7 +443,7 @@ export function DashboardPage() {
                   size="large"
                   icon={<PlayRegular />}
                   onClick={() => {
-                    if (jobs.length > 0) {
+                    if (selectedJobId) {
                       startTimer();
                     } else {
                       setPage('timer');

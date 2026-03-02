@@ -27,14 +27,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('theme:changed', handler);
     },
   },
-  idle: {
-    getIdleTime: () => ipcRenderer.invoke('idle:getIdleTime'),
-    onIdleStateChanged: (callback: (state: 'active' | 'idle' | 'locked') => void) => {
-      const handler = (_event: any, state: 'active' | 'idle' | 'locked') => callback(state);
-      ipcRenderer.on('idle:stateChanged', handler);
-      return () => ipcRenderer.removeListener('idle:stateChanged', handler);
-    },
-  },
   notify: (title: string, body: string) => ipcRenderer.send('notify', title, body),
   openExternal: (url: string) => ipcRenderer.send('shell:openExternal', url),
 
@@ -49,6 +41,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     export: () => ipcRenderer.invoke('data:export'),
     import: (mode: 'replace' | 'merge') => ipcRenderer.invoke('data:import', mode),
     exportCSV: () => ipcRenderer.invoke('data:exportCSV'),
+  },
+
+  // Auto-updater
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.send('updater:install'),
+    onStatus: (callback: (data: any) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('updater:status', handler);
+      return () => ipcRenderer.removeListener('updater:status', handler);
+    },
   },
 
   // Listen for global shortcut events

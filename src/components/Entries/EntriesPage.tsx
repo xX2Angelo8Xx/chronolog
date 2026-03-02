@@ -86,7 +86,6 @@ const useStyles = makeStyles({
   },
   totalHours: {
     fontSize: '14px',
-    opacity: 0.7,
     color: tokens.colorNeutralForeground2,
     fontWeight: '500',
   },
@@ -126,7 +125,7 @@ const useStyles = makeStyles({
   weekDayHours: {
     fontSize: '12px',
     marginTop: '2px',
-    opacity: 0.8,
+    color: tokens.colorNeutralForeground2,
   },
   weekDayBar: {
     width: '100%',
@@ -401,6 +400,7 @@ export function EntriesPage() {
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [showWeekView, setShowWeekView] = useState(false);
   const [weekHours, setWeekHours] = useState<Record<string, number>>({});
+  const [weekEntries, setWeekEntries] = useState<Record<string, TimeEntry[]>>({});
 
   // Filter state
   const [filterJobId, setFilterJobId] = useState('');
@@ -451,6 +451,7 @@ export function EntriesPage() {
   const loadWeekHours = useCallback(async () => {
     if (!showWeekView) return;
     const hours: Record<string, number> = {};
+    const entriesByDay: Record<string, TimeEntry[]> = {};
     for (const dayDate of weekDates) {
       const dayStart = `${dayDate}T00:00:00`;
       const dayEnd = `${dayDate}T23:59:59`;
@@ -459,8 +460,10 @@ export function EntriesPage() {
         .filter((e: TimeEntry) => !e.is_running)
         .reduce((sum: number, e: TimeEntry) => sum + (e.duration_minutes || 0), 0);
       hours[dayDate] = totalMins;
+      entriesByDay[dayDate] = dayEntries;
     }
     setWeekHours(hours);
+    setWeekEntries(entriesByDay);
   }, [showWeekView, weekDates]);
 
   useEffect(() => {
@@ -618,7 +621,7 @@ export function EntriesPage() {
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>{t('entries.title')}</h1>
         <div className={styles.headerActions}>
-          <Tooltip content={t('common.thisWeek')} relationship="label">
+          <Tooltip content={showWeekView ? t('entries.dayView', { defaultValue: 'Day View' }) : t('entries.weekView', { defaultValue: 'Week View' })} relationship="label">
             <Button
               appearance={showWeekView ? 'primary' : 'subtle'}
               icon={<CalendarWeekNumbersRegular />}
@@ -757,163 +760,357 @@ export function EntriesPage() {
 
       {/* Entries List */}
       <div className={styles.entriesList}>
-        {filteredEntries.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>
-              <ClockRegular style={{ fontSize: 48 }} />
-            </div>
-            <div className={styles.emptyTitle}>
-              {hasFilters ? t('common.noData') : t('entries.noEntries')}
-            </div>
-            <div className={styles.emptyDescription}>
-              {hasFilters
-                ? t('common.search')
-                : t('entries.quickEntry', { defaultValue: 'Start tracking or add a manual entry to see your work here.' })}
-            </div>
-            {!hasFilters && (
-              <Button appearance="primary" icon={<AddRegular />} onClick={openAddDialog}>
-                {t('entries.addEntry')}
-              </Button>
-            )}
-          </div>
-        ) : (
-          filteredEntries.map((entry) => (
-            <Card key={entry.id} className={styles.entryCard}>
-              {/* Color bar */}
-              <div
-                className={styles.entryColorBar}
-                style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0] }}
-              />
-
-              {/* Grip handle (visual only) */}
-              <div className={styles.entryGrip}>
-                <ReOrderDotsVerticalRegular fontSize={16} />
-              </div>
-
-              {/* Checkbox for bulk select */}
-              <div className={styles.entryCheckbox}>
-                <Checkbox
-                  checked={selectedIds.has(entry.id)}
-                  onChange={() => toggleSelect(entry.id)}
-                />
-              </div>
-
-              {/* Entry body */}
-              <div className={styles.entryBody}>
-                <div className={styles.entryInfo}>
-                  {/* Title row */}
-                  <div className={styles.entryTitle}>
-                    <span>{entry.project_name || entry.job_name || '—'}</span>
-                    {entry.is_manual && (
-                      <Badge appearance="outline" size="small" color="informative">
-                        {t('entries.manual')}
-                      </Badge>
-                    )}
-                    {entry.is_running && (
-                      <Badge
-                        appearance="filled"
-                        color="success"
-                        size="small"
-                        icon={<span className={styles.runningPulse} />}
-                      >
-                        {t('timer.running')}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Meta row */}
-                  <div className={styles.entryMeta}>
-                    {entry.job_name && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span
-                          className={styles.colorDot}
-                          style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0], marginRight: 2 }}
-                        />
-                        {entry.job_name}
-                      </span>
-                    )}
-                    {entry.category_name && (
-                      <>
-                        <span>·</span>
-                        <span>{entry.category_name}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Note preview */}
-                  {entry.note && (
-                    <div className={styles.entryNote}>
-                      <NoteRegular style={{ marginRight: 4, verticalAlign: 'middle', fontSize: 12 }} />
-                      {entry.note}
-                    </div>
-                  )}
-
-                  {/* Breaks */}
-                  {entry.breaks && entry.breaks.length > 0 && (
-                    <div className={styles.breakBadges}>
-                      {entry.breaks.map((brk: Break) => (
-                        <span key={brk.id} className={styles.breakBadge}>
-                          {brk.break_type === 'coffee' ? '☕' : '🍽️'}
-                          {brk.duration_minutes ? formatMinutes(brk.duration_minutes) : '...'}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Tags */}
-                  {entry.tags && entry.tags.length > 0 && (
-                    <div className={styles.tagBadges}>
-                      {entry.tags.map((tag: Tag) => (
-                        <Badge
-                          key={tag.id}
-                          appearance="tint"
-                          size="small"
-                          icon={<TagRegular />}
-                          style={{
-                            backgroundColor: tag.color + '22',
-                            color: tag.color,
-                            borderColor: tag.color + '44',
-                          }}
-                        >
-                          {tag.name}
+        {showWeekView ? (
+          // Week view: group entries by day
+          weekDates.some((d) => (weekEntries[d]?.length || 0) > 0) ? (
+            weekDates.map((dayDate) => {
+              const dayEntriesList = weekEntries[dayDate] || [];
+              // Apply filters to week entries
+              let filtered = dayEntriesList;
+              if (filterJobId) {
+                filtered = filtered.filter((e) => e.job_id === filterJobId);
+              }
+              if (searchNote.trim()) {
+                const query = searchNote.toLowerCase();
+                filtered = filtered.filter(
+                  (e) =>
+                    e.note?.toLowerCase().includes(query) ||
+                    e.job_name?.toLowerCase().includes(query) ||
+                    e.project_name?.toLowerCase().includes(query)
+                );
+              }
+              if (filtered.length === 0) return null;
+              const dayTotal = filtered
+                .filter((e) => !e.is_running)
+                .reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+              const dayLabel = new Date(dayDate).toLocaleDateString(undefined, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+              });
+              return (
+                <div key={dayDate}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 4px 6px',
+                      borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: 14,
+                        color: dayDate === getToday()
+                          ? tokens.colorBrandForeground1
+                          : tokens.colorNeutralForeground1,
+                      }}
+                    >
+                      {dayLabel}
+                      {dayDate === getToday() && (
+                        <Badge appearance="filled" color="brand" size="small" style={{ marginLeft: 8 }}>
+                          {t('common.today')}
                         </Badge>
-                      ))}
-                    </div>
-                  )}
+                      )}
+                    </span>
+                    <span style={{ fontSize: 13, color: tokens.colorNeutralForeground3, fontWeight: 500 }}>
+                      {formatMinutes(dayTotal)}
+                    </span>
+                  </div>
+                  {filtered.map((entry) => (
+                    <Card key={entry.id} className={styles.entryCard} style={{ marginBottom: 8 }}>
+                      {/* Color bar */}
+                      <div
+                        className={styles.entryColorBar}
+                        style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0] }}
+                      />
+                      <div className={styles.entryGrip}>
+                        <ReOrderDotsVerticalRegular fontSize={16} />
+                      </div>
+                      <div className={styles.entryCheckbox}>
+                        <Checkbox
+                          checked={selectedIds.has(entry.id)}
+                          onChange={() => toggleSelect(entry.id)}
+                        />
+                      </div>
+                      <div className={styles.entryBody}>
+                        <div className={styles.entryInfo}>
+                          <div className={styles.entryTitle}>
+                            <span>{entry.project_name || entry.job_name || '—'}</span>
+                            {entry.is_manual && (
+                              <Badge appearance="outline" size="small" color="informative">
+                                {t('entries.manual')}
+                              </Badge>
+                            )}
+                            {entry.is_running && (
+                              <Badge
+                                appearance="filled"
+                                color="success"
+                                size="small"
+                                icon={<span className={styles.runningPulse} />}
+                              >
+                                {t('timer.running')}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className={styles.entryMeta}>
+                            {entry.job_name && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span
+                                  className={styles.colorDot}
+                                  style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0], marginRight: 2 }}
+                                />
+                                {entry.job_name}
+                              </span>
+                            )}
+                            {entry.category_name && (
+                              <>
+                                <span>·</span>
+                                <span>{entry.category_name}</span>
+                              </>
+                            )}
+                          </div>
+                          {entry.note && (
+                            <div className={styles.entryNote}>
+                              <NoteRegular style={{ marginRight: 4, verticalAlign: 'middle', fontSize: 12 }} />
+                              {entry.note}
+                            </div>
+                          )}
+                          {entry.breaks && entry.breaks.length > 0 && (
+                            <div className={styles.breakBadges}>
+                              {entry.breaks.map((brk: Break) => (
+                                <span key={brk.id} className={styles.breakBadge}>
+                                  {brk.break_type === 'coffee' ? '☕' : '🍽️'}
+                                  {brk.duration_minutes ? formatMinutes(brk.duration_minutes) : '...'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {entry.tags && entry.tags.length > 0 && (
+                            <div className={styles.tagBadges}>
+                              {entry.tags.map((tag: Tag) => (
+                                <Badge
+                                  key={tag.id}
+                                  appearance="tint"
+                                  size="small"
+                                  icon={<TagRegular />}
+                                  style={{
+                                    backgroundColor: tag.color + '22',
+                                    color: tag.color,
+                                    borderColor: tag.color + '44',
+                                  }}
+                                >
+                                  {tag.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className={styles.entryDuration}>
+                          <span>{entry.duration_minutes ? formatMinutes(entry.duration_minutes) : '—'}</span>
+                          <span className={styles.entryTimeRange}>
+                            {formatTime(entry.start_time)}
+                            {entry.end_time ? ` – ${formatTime(entry.end_time)}` : ''}
+                          </span>
+                        </div>
+                        <div className={styles.entryActions}>
+                          <Tooltip content={t('common.edit')} relationship="label">
+                            <Button
+                              appearance="subtle"
+                              size="small"
+                              icon={<EditRegular />}
+                              onClick={() => openEditDialog(entry)}
+                            />
+                          </Tooltip>
+                          <Tooltip content={t('common.delete')} relationship="label">
+                            <Button
+                              appearance="subtle"
+                              size="small"
+                              icon={<DeleteRegular />}
+                              onClick={() => handleDelete(entry.id)}
+                              style={{ color: tokens.colorPaletteRedForeground1 }}
+                            />
+                          </Tooltip>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
-
-                {/* Duration + time range */}
-                <div className={styles.entryDuration}>
-                  <span>{entry.duration_minutes ? formatMinutes(entry.duration_minutes) : '—'}</span>
-                  <span className={styles.entryTimeRange}>
-                    {formatTime(entry.start_time)}
-                    {entry.end_time ? ` – ${formatTime(entry.end_time)}` : ''}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className={styles.entryActions}>
-                  <Tooltip content={t('common.edit')} relationship="label">
-                    <Button
-                      appearance="subtle"
-                      size="small"
-                      icon={<EditRegular />}
-                      onClick={() => openEditDialog(entry)}
-                    />
-                  </Tooltip>
-                  <Tooltip content={t('common.delete')} relationship="label">
-                    <Button
-                      appearance="subtle"
-                      size="small"
-                      icon={<DeleteRegular />}
-                      onClick={() => handleDelete(entry.id)}
-                      style={{ color: tokens.colorPaletteRedForeground1 }}
-                    />
-                  </Tooltip>
-                </div>
+              );
+            })
+          ) : (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <ClockRegular style={{ fontSize: 48 }} />
               </div>
-            </Card>
-          ))
+              <div className={styles.emptyTitle}>{t('entries.noEntries')}</div>
+              <div className={styles.emptyDescription}>
+                {t('entries.quickEntry', { defaultValue: 'Start tracking or add a manual entry to see your work here.' })}
+              </div>
+            </div>
+          )
+        ) : (
+          filteredEntries.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <ClockRegular style={{ fontSize: 48 }} />
+              </div>
+              <div className={styles.emptyTitle}>
+                {hasFilters ? t('common.noData') : t('entries.noEntries')}
+              </div>
+              <div className={styles.emptyDescription}>
+                {hasFilters
+                  ? t('common.search')
+                  : t('entries.quickEntry', { defaultValue: 'Start tracking or add a manual entry to see your work here.' })}
+              </div>
+              {!hasFilters && (
+                <Button appearance="primary" icon={<AddRegular />} onClick={openAddDialog}>
+                  {t('entries.addEntry')}
+                </Button>
+              )}
+            </div>
+          ) : (
+            filteredEntries.map((entry) => (
+              <Card key={entry.id} className={styles.entryCard}>
+                {/* Color bar */}
+                <div
+                  className={styles.entryColorBar}
+                  style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0] }}
+                />
+
+                {/* Grip handle (visual only) */}
+                <div className={styles.entryGrip}>
+                  <ReOrderDotsVerticalRegular fontSize={16} />
+                </div>
+
+                {/* Checkbox for bulk select */}
+                <div className={styles.entryCheckbox}>
+                  <Checkbox
+                    checked={selectedIds.has(entry.id)}
+                    onChange={() => toggleSelect(entry.id)}
+                  />
+                </div>
+
+                {/* Entry body */}
+                <div className={styles.entryBody}>
+                  <div className={styles.entryInfo}>
+                    {/* Title row */}
+                    <div className={styles.entryTitle}>
+                      <span>{entry.project_name || entry.job_name || '—'}</span>
+                      {entry.is_manual && (
+                        <Badge appearance="outline" size="small" color="informative">
+                          {t('entries.manual')}
+                        </Badge>
+                      )}
+                      {entry.is_running && (
+                        <Badge
+                          appearance="filled"
+                          color="success"
+                          size="small"
+                          icon={<span className={styles.runningPulse} />}
+                        >
+                          {t('timer.running')}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Meta row */}
+                    <div className={styles.entryMeta}>
+                      {entry.job_name && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span
+                            className={styles.colorDot}
+                            style={{ backgroundColor: entry.job_color || COLOR_PALETTE[0], marginRight: 2 }}
+                          />
+                          {entry.job_name}
+                        </span>
+                      )}
+                      {entry.category_name && (
+                        <>
+                          <span>·</span>
+                          <span>{entry.category_name}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Note preview */}
+                    {entry.note && (
+                      <div className={styles.entryNote}>
+                        <NoteRegular style={{ marginRight: 4, verticalAlign: 'middle', fontSize: 12 }} />
+                        {entry.note}
+                      </div>
+                    )}
+
+                    {/* Breaks */}
+                    {entry.breaks && entry.breaks.length > 0 && (
+                      <div className={styles.breakBadges}>
+                        {entry.breaks.map((brk: Break) => (
+                          <span key={brk.id} className={styles.breakBadge}>
+                            {brk.break_type === 'coffee' ? '☕' : '🍽️'}
+                            {brk.duration_minutes ? formatMinutes(brk.duration_minutes) : '...'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {entry.tags && entry.tags.length > 0 && (
+                      <div className={styles.tagBadges}>
+                        {entry.tags.map((tag: Tag) => (
+                          <Badge
+                            key={tag.id}
+                            appearance="tint"
+                            size="small"
+                            icon={<TagRegular />}
+                            style={{
+                              backgroundColor: tag.color + '22',
+                              color: tag.color,
+                              borderColor: tag.color + '44',
+                            }}
+                          >
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Duration + time range */}
+                  <div className={styles.entryDuration}>
+                    <span>{entry.duration_minutes ? formatMinutes(entry.duration_minutes) : '—'}</span>
+                    <span className={styles.entryTimeRange}>
+                      {formatTime(entry.start_time)}
+                      {entry.end_time ? ` – ${formatTime(entry.end_time)}` : ''}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className={styles.entryActions}>
+                    <Tooltip content={t('common.edit')} relationship="label">
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<EditRegular />}
+                        onClick={() => openEditDialog(entry)}
+                      />
+                    </Tooltip>
+                    <Tooltip content={t('common.delete')} relationship="label">
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<DeleteRegular />}
+                        onClick={() => handleDelete(entry.id)}
+                        style={{ color: tokens.colorPaletteRedForeground1 }}
+                      />
+                    </Tooltip>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )
         )}
       </div>
 

@@ -264,7 +264,7 @@ export function GoalsPage() {
               thickness="large"
               color="brand"
             />
-            <div style={{ fontSize: 12, opacity: 0.6 }}>
+            <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
               {currentXPInLevel} / 100 {t('gamification.xp')} →{' '}
               {t('gamification.nextLevel')}
             </div>
@@ -279,7 +279,7 @@ export function GoalsPage() {
             <div className="stat-card-value" style={{ color: '#f59e0b' }}>
               🔥 {gamification.current_streak}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.6 }}>
+            <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
               {t('goals.longestStreak')}: {gamification.longest_streak}{' '}
               {t('dashboard.days')}
             </div>
@@ -311,7 +311,7 @@ export function GoalsPage() {
               padding: 32,
               textAlign: 'center',
               background: tokens.colorNeutralBackground1,
-              opacity: 0.5,
+              color: tokens.colorNeutralForeground3,
             }}
           >
             {t('common.noData')}
@@ -358,7 +358,7 @@ export function GoalsPage() {
                             ? t('goals.weekly')
                             : t('goals.monthly')}
                       </Badge>
-                      <span style={{ fontSize: 13, opacity: 0.6 }}>
+                      <span style={{ fontSize: 13, color: tokens.colorNeutralForeground3 }}>
                         {goal.current_hours.toFixed(1)}h / {goal.target_hours}h (
                         {goal.progress_percent}%)
                       </span>
@@ -428,7 +428,7 @@ export function GoalsPage() {
                 gap: 4,
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: tokens.colorNeutralForeground3 }}>
                 {day.label}
               </span>
               {day.logged ? (
@@ -499,7 +499,7 @@ export function GoalsPage() {
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
                     {ach.name}
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>
+                  <div style={{ fontSize: 12, color: tokens.colorNeutralForeground3 }}>
                     {ach.description}
                   </div>
                   {isUnlocked && (
