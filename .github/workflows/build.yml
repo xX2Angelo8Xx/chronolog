@@ -17,16 +17,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      # Rebuild better-sqlite3 for the arm64 Electron target while on the x64 runner.
+      # electron-builder will handle x64 natively; this ensures arm64 binaries are ready.
+      - name: Rebuild native modules for arm64
+        run: npx @electron/rebuild --arch arm64
+
       - name: Build & Package
         run: npm run build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -34,7 +37,8 @@ jobs:
           name: chronolog-windows
           path: |
             release/*.exe
-            release/*.yml
+            release/*.blockmap
+            release/latest.yml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -42,6 +46,8 @@ jobs:
         with:
           files: |
             release/ChronoLog-Setup-*.exe
+            release/ChronoLog-Setup-*.exe.blockmap
             release/ChronoLog-Portable-*.exe
+            release/latest.yml
           draft: false
           generate_release_notes: true

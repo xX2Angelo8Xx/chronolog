@@ -26,9 +26,11 @@ win:
     - target: nsis
       arch:
         - x64
+        - arm64
     - target: portable
       arch:
         - x64
+        - arm64
   icon: assets/icon.png
   signAndEditExecutable: false
   fileAssociations:
@@ -44,7 +46,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: ChronoLog
-  artifactName: "ChronoLog-Setup-${version}.${ext}"
+  artifactName: "ChronoLog-Setup-${version}-${arch}.${ext}"
   installerIcon: assets/icon.ico
   uninstallerIcon: assets/icon.ico
   installerHeaderIcon: assets/icon.ico
@@ -53,7 +55,7 @@ nsis:
   license: LICENSE
 
 portable:
-  artifactName: "ChronoLog-Portable-${version}.${ext}"
+  artifactName: "ChronoLog-Portable-${version}-${arch}.${ext}"
 
 publish:
   provider: github
